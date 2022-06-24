@@ -3,6 +3,7 @@ package me.syntheticdev.lockedcontainers;
 import me.syntheticdev.lockedcontainers.events.BlockListener;
 import me.syntheticdev.lockedcontainers.events.PlayerInteractListener;
 import org.bukkit.Bukkit;
+import org.bukkit.inventory.ShapedRecipe;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -16,11 +17,7 @@ public final class LockedContainersPlugin extends JavaPlugin {
         manager = new LockedContainersManager();
 
         this.registerEvents();
-    }
-
-    @Override
-    public void onDisable() {
-
+        LockedContainersRecipes.register();
     }
 
     public static LockedContainersPlugin getPlugin() {

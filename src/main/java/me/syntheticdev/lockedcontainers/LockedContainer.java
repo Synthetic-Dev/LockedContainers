@@ -1,8 +1,6 @@
-package me.syntheticdev.lockedcontainers.containers;
+package me.syntheticdev.lockedcontainers;
 
-import me.syntheticdev.lockedcontainers.LockedContainersPlugin;
 import org.bukkit.*;
-import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
@@ -56,7 +54,7 @@ public class LockedContainer implements ConfigurationSerializable {
     public ItemStack createKey() {
         ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK, 1);
         ItemMeta meta = key.getItemMeta();
-        meta.setDisplayName(ChatColor.GOLD + this.container.getType().toString() + " Key");
+        meta.setDisplayName(ChatColor.GOLD + Utils.toDisplayCase(this.container.getType().toString()) + " Key");
 
         PersistentDataContainer nbt = meta.getPersistentDataContainer();
         NamespacedKey uuidKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "key-uuid");

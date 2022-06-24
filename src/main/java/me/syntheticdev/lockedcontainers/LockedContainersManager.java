@@ -1,7 +1,5 @@
 package me.syntheticdev.lockedcontainers;
 
-import com.sun.tools.javac.util.StringUtils;
-import me.syntheticdev.lockedcontainers.containers.LockedContainer;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -19,23 +17,22 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.permissions.Permission;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class LockedContainersManager {
     private ArrayList<LockedContainer> containers;
     private ArrayList<Material> containerTypes;
 
     public LockedContainersManager() {
-        this.containerTypes = new ArrayList<Material>();
+        this.containerTypes = new ArrayList<>();
         this.containerTypes.add(Material.CHEST);
         this.containerTypes.add(Material.BARREL);
 
@@ -119,11 +116,22 @@ public class LockedContainersManager {
         return new ArrayList();
     }
 
-    private LockedContainer createLockedContainer(Container container) {
+    private LockedContainer createLockedContainer(BlockPlaceEvent event, Container container) {
+        Player player = event.getPlayer();
+        LockedContainer lockedContainer = new LockedContainer(container, player, UUID.randomUUID());
 
+        try {
+            File file = new File(LockedContainersPlugin.getPlugin().getDataFolder().getAbsolutePath(), "containers.yml");
+            FileConfiguration config = YamlConfiguration.loadConfiguration(file);
 
-        //create locked container
-        return (LockedContainer)null;
+            this.containers.add(lockedContainer);
+            config.set("containers", this.containers);
+            config.save(file);
+        } catch (IOException err) {
+            err.printStackTrace();
+        }
+
+        return lockedContainer;
     }
 
     public void destroyLockedContainer(BlockBreakEvent event, LockedContainer lockedContainer) throws IOException {
@@ -171,7 +179,7 @@ public class LockedContainersManager {
 
         if (lockedChestCount > 0) return true;
 
-        this.createLockedContainer(container);
+        this.createLockedContainer(event, container);
         return false;
     }
 
@@ -194,6 +202,8 @@ public class LockedContainersManager {
     }
 
     public void handleCreateKey(PlayerInteractEvent event, ItemStack item) {
+        if (item.getAmount() == 0) return;
+
         Player player = event.getPlayer();
         Container container = (Container)event.getClickedBlock();
         LockedContainer lockedContainer = this.getLockedContainer(container);
@@ -213,5 +223,6 @@ public class LockedContainersManager {
         } else {
             player.getInventory().addItem(item);
         }
+        player.sendMessage(ChatColor.GREEN + "Key created for Locked " + Utils.toDisplayCase(container.getType().toString()) + " at " + lockedContainer.getContainer().getLocation().toVector());
     }
 }
