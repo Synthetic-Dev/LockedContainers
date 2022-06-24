@@ -43,7 +43,12 @@ public class LockedContainer implements ConfigurationSerializable {
         return this.owner.getUniqueId().equals(player.getUniqueId());
     }
 
-    public boolean isValidKey(PersistentDataContainer nbt) {
+    public boolean isValidKey(ItemStack item) {
+        if (!item.hasItemMeta()) return false;
+
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer nbt = meta.getPersistentDataContainer();
+
         NamespacedKey uuidKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "key-uuid");
         return nbt.has(uuidKey, PersistentDataType.STRING) && nbt.get(uuidKey, PersistentDataType.STRING) == this.uuid.toString();
     }

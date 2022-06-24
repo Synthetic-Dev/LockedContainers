@@ -40,10 +40,6 @@ public class BlockListener implements Listener {
         if (!manager.isLockedContainer(block)) return;
 
         LockedContainer lockedContainer = manager.getLockedContainer((Container)block);
-        Player player = event.getPlayer();
-        if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
-            player.sendMessage(ChatColor.RED + "This is not your Locked " + Utils.toDisplayCase(block.getType().toString()) + ".");
-        }
 
         try {
             manager.destroyLockedContainer(lockedContainer);

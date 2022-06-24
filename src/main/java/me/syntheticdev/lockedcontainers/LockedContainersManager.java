@@ -13,6 +13,7 @@ import org.bukkit.block.DoubleChest;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.DoubleChestInventory;
@@ -119,11 +120,18 @@ public class LockedContainersManager {
     }
 
     private LockedContainer createLockedContainer(Container container) {
+
+
         //create locked container
         return (LockedContainer)null;
     }
 
-    public void destroyLockedContainer(LockedContainer lockedContainer) throws IOException {
+    public void destroyLockedContainer(BlockBreakEvent event, LockedContainer lockedContainer) throws IOException {
+        Player player = event.getPlayer();
+        if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
+            player.sendMessage(ChatColor.RED + "This is not your Locked " + Utils.toDisplayCase(event.getBlock().getType().toString()) + ".");
+        }
+
         File file = new File(LockedContainersPlugin.getPlugin().getDataFolder().getAbsolutePath(), "containers.yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
 
@@ -173,10 +181,37 @@ public class LockedContainersManager {
         LockedContainer lockedContainer = this.getLockedContainer(container);
 
         if (lockedContainer == null) return;
-        if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
+
+        ItemStack item = player.getInventory().getItemInMainHand();
+        boolean hasKey = item.getType() == Material.TRIPWIRE_HOOK && lockedContainer.isValidKey(item);
+
+        if (!hasKey && !lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
             player.sendMessage(ChatColor.RED + "This " + Utils.toDisplayCase(container.getType().toString()) + " is locked.");
+            return;
+        }
+
+        player.openInventory(container.getInventory());
+    }
+
+    public void handleCreateKey(PlayerInteractEvent event, ItemStack item) {
+        Player player = event.getPlayer();
+        Container container = (Container)event.getClickedBlock();
+        LockedContainer lockedContainer = this.getLockedContainer(container);
+
+        if (lockedContainer == null) return;
+        if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
+            player.sendMessage(ChatColor.RED + "This is not your Locked " + Utils.toDisplayCase(container.getType().toString()) + ".");
+            return;
+        }
+
+        ItemStack key = lockedContainer.createKey();
+        int amount = item.getAmount() - 1;
+        item.setAmount(amount);
+
+        if (amount == 0) {
+            player.getInventory().setItemInMainHand(key);
         } else {
-            player.openInventory(container.getInventory());
+            player.getInventory().addItem(item);
         }
     }
 }
