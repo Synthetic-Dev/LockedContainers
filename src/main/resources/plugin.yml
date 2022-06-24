@@ -1,0 +1,6 @@
+name: Locked Containers
+version: '${project.version}'
+main: me.syntheticdev.lockedcontainers.LockedContainersPlugin
+api-version: 1.19
+authors: [ SyntheticDev ]
+description: User-owned locked chests and barrels
