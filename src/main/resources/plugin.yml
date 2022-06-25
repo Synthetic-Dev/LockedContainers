@@ -1,4 +1,4 @@
-name: Locked Containers
+name: LockedContainers
 version: '${project.version}'
 main: me.syntheticdev.lockedcontainers.LockedContainersPlugin
 api-version: 1.19

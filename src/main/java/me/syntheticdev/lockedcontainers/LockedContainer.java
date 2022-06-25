@@ -1,18 +1,21 @@
 package me.syntheticdev.lockedcontainers;
 
 import org.bukkit.*;
-import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public class LockedContainer implements ConfigurationSerializable {
     private OfflinePlayer owner;
@@ -37,6 +40,10 @@ public class LockedContainer implements ConfigurationSerializable {
         return this.container;
     }
 
+    public void setContainer(Container container) {
+        this.container = container;
+    }
+
     public boolean isOwner(Player player) {
         return this.owner.getUniqueId().equals(player.getUniqueId());
     }
@@ -48,13 +55,23 @@ public class LockedContainer implements ConfigurationSerializable {
         PersistentDataContainer nbt = meta.getPersistentDataContainer();
 
         NamespacedKey uuidKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "key-uuid");
-        return nbt.has(uuidKey, PersistentDataType.STRING) && nbt.get(uuidKey, PersistentDataType.STRING) == this.uuid.toString();
+        if (!nbt.has(uuidKey, PersistentDataType.STRING)) return false;
+
+        Logger logger = LockedContainersPlugin.getPlugin().getLogger();
+
+        String keyUUID = nbt.get(uuidKey, PersistentDataType.STRING);
+        String uuid = this.uuid.toString();
+        boolean isValid = keyUUID.equals(uuid);
+        //logger.info("Key UUID: " + keyUUID + ", Container UUID: " + uuid + ", " + isValid);
+        return isValid;
     }
 
     public ItemStack createKey() {
         ItemStack key = new ItemStack(Material.TRIPWIRE_HOOK, 1);
         ItemMeta meta = key.getItemMeta();
         meta.setDisplayName(ChatColor.GOLD + Utils.toDisplayCase(this.container.getType().toString()) + " Key");
+        meta.addEnchant(Enchantment.ARROW_INFINITE, 1, true);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 
         PersistentDataContainer nbt = meta.getPersistentDataContainer();
         NamespacedKey uuidKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "key-uuid");
@@ -77,7 +94,7 @@ public class LockedContainer implements ConfigurationSerializable {
         String ownerUUID = (String)serializedMap.get("owner");
         OfflinePlayer owner = Bukkit.getOfflinePlayer(UUID.fromString(ownerUUID));
 
-        Chest container = (Chest)((Location)serializedMap.get("container")).getBlock().getState();
+        Container container = (Container)((Location)serializedMap.get("container")).getBlock().getState();
         UUID uuid = UUID.fromString((String)serializedMap.get("uuid"));
 
         LockedContainer deserialized = new LockedContainer(container, owner, uuid);

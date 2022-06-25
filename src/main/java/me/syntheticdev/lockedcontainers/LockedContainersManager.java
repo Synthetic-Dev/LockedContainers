@@ -1,21 +1,14 @@
 package me.syntheticdev.lockedcontainers;
 
-import org.bukkit.ChatColor;
-import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
-import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
-import org.bukkit.block.Container;
-import org.bukkit.block.DoubleChest;
+import org.bukkit.*;
+import org.bukkit.block.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.DoubleChestInventory;
-import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
@@ -24,27 +17,35 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 public class LockedContainersManager {
     private ArrayList<LockedContainer> containers;
-    private ArrayList<Material> containerTypes;
+    private Material[] containerTypes = new Material[]{Material.CHEST, Material.BARREL};
 
     public LockedContainersManager() {
-        this.containerTypes = new ArrayList<>();
-        this.containerTypes.add(Material.CHEST);
-        this.containerTypes.add(Material.BARREL);
-
         this.containers = this.load();
     }
 
-    private boolean isLockableContainer(Block block) {
-        return containerTypes.stream().anyMatch((material) -> material.equals(block.getType()));
+    public boolean isLockableContainer(Block block) {
+        return Arrays.stream(containerTypes).anyMatch((material) -> material.equals(block.getType()));
     }
 
-    private boolean isLockableContainer(ItemStack item) {
-        return containerTypes.stream().anyMatch((material) -> material.equals(item.getType()));
+    public boolean isLockableContainer(ItemStack item) {
+        return Arrays.stream(containerTypes).anyMatch((material) -> material.equals(item.getType()));
+    }
+
+    public boolean isLockedContainerItem(ItemStack item) {
+        if (!this.isLockableContainer(item) || !item.hasItemMeta()) return false;
+
+        ItemMeta meta = item.getItemMeta();
+        PersistentDataContainer nbt = meta.getPersistentDataContainer();
+        NamespacedKey namespacedKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "is-locked-container");
+
+        return nbt.has(namespacedKey, PersistentDataType.BYTE);
     }
 
     private boolean isLockedContainerRaw(Block block) {
@@ -56,22 +57,12 @@ public class LockedContainersManager {
 
         boolean is = this.isLockedContainerRaw(block);
         // Handle double chests
-        if (!is && block.getType() == Material.CHEST && ((Chest)block).getInventory() instanceof DoubleChestInventory) {
-            DoubleChest doubleChest = (DoubleChest)((Chest)block).getInventory().getHolder();
-            is = this.isLockedContainerRaw((Block) doubleChest.getLeftSide());
-            if (!is) this.isLockedContainerRaw((Block) doubleChest.getRightSide());
+        if (!is && block.getType().equals(Material.CHEST) && ((Chest)block.getState()).getInventory() instanceof DoubleChestInventory) {
+            DoubleChest doubleChest = (DoubleChest)((Chest)block.getState()).getInventory().getHolder();
+            is = this.isLockedContainerRaw(((Chest)doubleChest.getLeftSide()).getBlock());
+            if (!is) is = this.isLockedContainerRaw(((Chest)doubleChest.getRightSide()).getBlock());
         }
         return is;
-    }
-
-    public boolean isLockedContainerItem(ItemStack item) {
-        if (!this.isLockableContainer(item) || !item.hasItemMeta()) return false;
-
-        ItemMeta meta = item.getItemMeta();
-        PersistentDataContainer nbt = meta.getPersistentDataContainer();
-        NamespacedKey namespacedKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "is-locked-container");
-
-        return nbt.has(namespacedKey, PersistentDataType.BYTE);
     }
 
     public boolean isKey(ItemStack item) {
@@ -96,10 +87,10 @@ public class LockedContainersManager {
     public LockedContainer getLockedContainer(Container container) {
         LockedContainer lockedContainer = this.getLockedContainerRaw(container);
         // Handle double chests
-        if (lockedContainer == null && container.getType() == Material.CHEST && container.getInventory() instanceof DoubleChestInventory) {
+        if (lockedContainer == null && container.getType().equals(Material.CHEST) && container.getInventory() instanceof DoubleChestInventory) {
             DoubleChest doubleChest = (DoubleChest)container.getInventory().getHolder();
             lockedContainer = this.getLockedContainerRaw((Chest)doubleChest.getLeftSide());
-            if (lockedContainer == null) this.getLockedContainerRaw((Chest)doubleChest.getRightSide());
+            if (lockedContainer == null) lockedContainer = this.getLockedContainerRaw((Chest)doubleChest.getRightSide());
         }
         return lockedContainer;
     }
@@ -114,6 +105,19 @@ public class LockedContainersManager {
             }
         }
         return new ArrayList();
+    }
+
+    public ItemStack createLockedContainerItem(Material container) {
+        ItemStack item = new ItemStack(container, 1);
+        ItemMeta meta = item.getItemMeta();
+        meta.setDisplayName(ChatColor.GOLD + "Locked " + Utils.toDisplayCase(container.toString()));
+
+        PersistentDataContainer nbt = meta.getPersistentDataContainer();
+        NamespacedKey namespacedKey = new NamespacedKey(LockedContainersPlugin.getPlugin(), "is-locked-container");
+        nbt.set(namespacedKey, PersistentDataType.BYTE, (byte)1);
+
+        item.setItemMeta(meta);
+        return item;
     }
 
     private LockedContainer createLockedContainer(BlockPlaceEvent event, Container container) {
@@ -134,67 +138,110 @@ public class LockedContainersManager {
         return lockedContainer;
     }
 
-    public void destroyLockedContainer(BlockBreakEvent event, LockedContainer lockedContainer) throws IOException {
+    public boolean destroyLockedContainer(BlockBreakEvent event, LockedContainer lockedContainer) throws IOException {
         Player player = event.getPlayer();
         if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
             player.sendMessage(ChatColor.RED + "This is not your Locked " + Utils.toDisplayCase(event.getBlock().getType().toString()) + ".");
+            return true;
         }
 
         File file = new File(LockedContainersPlugin.getPlugin().getDataFolder().getAbsolutePath(), "containers.yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
 
-        this.containers.remove(lockedContainer);
+        Logger logger = LockedContainersPlugin.getPlugin().getLogger();
+        Container container = lockedContainer.getContainer();
+
+        if (!container.getLocation().equals(event.getBlock().getLocation())) {
+            //logger.info("Broke non-primary container");
+            return false;
+        }
+
+        //logger.info("Broke container: " + container.getType());
+        if (container.getType().equals(Material.CHEST) && ((Chest)container.getBlock().getState()).getInventory() instanceof DoubleChestInventory) {
+            //logger.info("Is double chest");
+            DoubleChest doubleChest = (DoubleChest)((Chest)container.getBlock().getState()).getInventory().getHolder();
+
+            Chest left = (Chest)doubleChest.getLeftSide();
+            Chest right = (Chest)doubleChest.getRightSide();
+
+            Chest otherChest = left.getLocation().equals(container.getLocation()) ? right : left;
+            lockedContainer.setContainer(otherChest);
+        } else {
+            this.containers.remove(lockedContainer);
+        }
+
         config.set("containers", this.containers);
         config.save(file);
+        return false;
     }
 
     public boolean handleContainerPlace(BlockPlaceEvent event) {
         Player player = event.getPlayer();
-        Container container = (Container)event.getBlock();
-        Location location = event.getBlock().getLocation();
+        Container container = (Container)event.getBlock().getState();
+
         int lockedChestCount = 0;
+        boolean isLockedContainer = this.isLockedContainerItem(event.getItemInHand());
 
-        if (container instanceof Chest) {
-            for (double x = -1; x <= 1; x = x + 2) {
-                for (double z = -1; z <= 1; z = z + 2) {
-                    Location neighbour = new Location(location.getWorld(), location.getX() + x, location.getY(), location.getZ() + z);
-                    Block block = neighbour.getBlock();
+        if (!player.isSneaking() && container.getType().equals(Material.CHEST)) {
+            BlockFace containerFacing = ((org.bukkit.block.data.type.Chest)container.getBlockData()).getFacing();
+            Logger logger = LockedContainersPlugin.getPlugin().getLogger();
 
-                    if (block.getType() != Material.CHEST) continue;
-                    if (!(((Chest)block).getInventory() instanceof DoubleChestInventory)) {
-                        if (this.isLockedContainer(block)) {
-                            lockedChestCount++;
-                            if (lockedChestCount > 1) {
-                                player.sendMessage(ChatColor.RED + "Locked Double Chest cannot be determined!");
-                                return true;
-                            }
-                        } else {
-                            player.sendMessage(ChatColor.RED + "Cannot attach Locked Chest to Chest!");
-                            return true;
-                        }
+            BlockFace[] sides = (containerFacing == BlockFace.NORTH || containerFacing == BlockFace.SOUTH)
+                    ? new BlockFace[]{BlockFace.EAST, BlockFace.WEST}
+                    : new BlockFace[]{BlockFace.NORTH, BlockFace.SOUTH};
+
+            for (BlockFace face : sides) {
+                Block block = container.getBlock().getRelative(face);
+                //logger.info("Checking pos: " + block.getLocation().toVector() + "; Type: " + block.getType());
+
+                if (block.getType() != Material.CHEST) continue;
+                if (((org.bukkit.block.data.type.Chest)block.getBlockData()).getFacing() != containerFacing) continue;
+
+                boolean isDouble = ((Chest)block.getState()).getInventory() instanceof DoubleChestInventory;
+                //logger.info("Is double chest: " + isDouble);
+                if (isDouble) continue;
+
+                boolean isLockedChest = this.isLockedContainer(block);
+
+                if (isLockedContainer && isLockedChest) {
+                    lockedChestCount++;
+                    if (lockedChestCount > 1) {
+                        player.sendMessage(ChatColor.RED + "Locked Double Chest cannot be determined!");
+                        return true;
                     }
+                } else if (isLockedContainer != isLockedChest) {
+                    player.sendMessage(ChatColor.RED + "Cannot attach " + (isLockedContainer ? "Locked " : "") + "Chest to "  + (isLockedChest ? "Locked " : "") +  "Chest!");
+                    return true;
                 }
             }
+            //logger.info("Placing chest, locked chests: " + lockedChestCount);
         }
 
-        if (lockedChestCount > 0) return true;
-
-        this.createLockedContainer(event, container);
+        if (isLockedContainer && lockedChestCount == 0) {
+            this.createLockedContainer(event, container);
+        }
         return false;
     }
 
     public void handleContainerOpen(PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        Container container = (Container)event.getClickedBlock();
+        Container container = (Container)event.getClickedBlock().getState();
         LockedContainer lockedContainer = this.getLockedContainer(container);
 
         if (lockedContainer == null) return;
 
         ItemStack item = player.getInventory().getItemInMainHand();
-        boolean hasKey = item.getType() == Material.TRIPWIRE_HOOK && lockedContainer.isValidKey(item);
+        boolean hasKey = item.getType() == Material.TRIPWIRE_HOOK && this.isKey(item);
+
+        if (hasKey && !lockedContainer.isValidKey(item)) {
+            player.sendMessage(ChatColor.RED + "That key is not for this " + Utils.toDisplayCase(container.getType().toString()) + ".");
+            player.playSound(container.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 1f);
+            return;
+        }
 
         if (!hasKey && !lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
             player.sendMessage(ChatColor.RED + "This " + Utils.toDisplayCase(container.getType().toString()) + " is locked.");
+            player.playSound(container.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_CLOSE, 1f, 1f);
             return;
         }
 
@@ -205,7 +252,7 @@ public class LockedContainersManager {
         if (item.getAmount() == 0) return;
 
         Player player = event.getPlayer();
-        Container container = (Container)event.getClickedBlock();
+        Container container = (Container)event.getClickedBlock().getState();
         LockedContainer lockedContainer = this.getLockedContainer(container);
 
         if (lockedContainer == null) return;
@@ -218,10 +265,12 @@ public class LockedContainersManager {
         int amount = item.getAmount() - 1;
         item.setAmount(amount);
 
+        PlayerInventory inventory = player.getInventory();
         if (amount == 0) {
-            player.getInventory().setItemInMainHand(key);
+            inventory.setItemInMainHand(key);
         } else {
-            player.getInventory().addItem(item);
+            inventory.setItemInMainHand(item);
+            inventory.addItem(key);
         }
         player.sendMessage(ChatColor.GREEN + "Key created for Locked " + Utils.toDisplayCase(container.getType().toString()) + " at " + lockedContainer.getContainer().getLocation().toVector());
     }

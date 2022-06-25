@@ -19,7 +19,7 @@ public class PlayerInteractListener implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (!(event.getAction() == Action.LEFT_CLICK_BLOCK || event.getAction() == Action.RIGHT_CLICK_BLOCK)) return;
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         Block block = event.getClickedBlock();
         if (!manager.isLockedContainer(block)) return;
@@ -27,7 +27,7 @@ public class PlayerInteractListener implements Listener {
         Player player = event.getPlayer();
         if (player.isSneaking()) {
             ItemStack item = player.getInventory().getItemInMainHand();
-            if (item.getType() == Material.TRIPWIRE_HOOK && !item.hasItemMeta()) {
+            if (item.getType().equals(Material.TRIPWIRE_HOOK) && !item.hasItemMeta()) {
                 manager.handleCreateKey(event, item);
                 event.setCancelled(true);
                 return;
