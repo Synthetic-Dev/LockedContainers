@@ -53,11 +53,13 @@ public class BlockListener implements Listener {
 
         LockedContainer lockedContainer = manager.getLockedContainer((Container)block.getState());
         logger.info("Broke: " + lockedContainer);
+        logger.info("Is null: " + (lockedContainer == null));
 
         try {
-            boolean cancelled = manager.destroyLockedContainer(event, lockedContainer);
-            logger.info("Cancelled: " + cancelled);
-            if (lockedContainer == null || !cancelled) {
+            boolean shouldBreak = manager.destroyLockedContainer(event, lockedContainer);
+            logger.info("Should break: " + shouldBreak);
+            if (lockedContainer == null || shouldBreak) {
+                logger.info("Breaking block");
                 Container container = (Container)block.getState();
                 ItemStack[] contents;
                 if (block.getType().equals(Material.CHEST)) {

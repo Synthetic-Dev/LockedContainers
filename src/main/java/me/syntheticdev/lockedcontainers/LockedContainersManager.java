@@ -56,14 +56,14 @@ public class LockedContainersManager {
     public boolean isLockedContainer(Block block) {
         if (!this.isLockableContainer(block)) return false;
 
-        boolean is = this.isLockedContainerRaw(block);
+        boolean isLocked = this.isLockedContainerRaw(block);
         // Handle double chests
-        if (!is && block.getType().equals(Material.CHEST) && ((Chest)block.getState()).getInventory() instanceof DoubleChestInventory) {
+        if (!isLocked && block.getType().equals(Material.CHEST) && ((Chest)block.getState()).getInventory() instanceof DoubleChestInventory) {
             DoubleChest doubleChest = (DoubleChest)((Chest)block.getState()).getInventory().getHolder();
-            is = this.isLockedContainerRaw(((Chest)doubleChest.getLeftSide()).getBlock());
-            if (!is) is = this.isLockedContainerRaw(((Chest)doubleChest.getRightSide()).getBlock());
+            isLocked = this.isLockedContainerRaw(((Chest)doubleChest.getLeftSide()).getBlock());
+            if (!isLocked) isLocked = this.isLockedContainerRaw(((Chest)doubleChest.getRightSide()).getBlock());
         }
-        return is;
+        return isLocked;
     }
 
     public boolean isKey(ItemStack item) {
@@ -152,7 +152,7 @@ public class LockedContainersManager {
         Player player = event.getPlayer();
         if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
             player.sendMessage(ChatColor.RED + "This is not your Locked " + Utils.toDisplayCase(event.getBlock().getType().toString()) + ".");
-            return true;
+            return false;
         }
 
         File file = new File(LockedContainersPlugin.getPlugin().getDataFolder().getAbsolutePath(), "containers.yml");
@@ -163,7 +163,7 @@ public class LockedContainersManager {
 
         if (!container.getLocation().equals(event.getBlock().getLocation())) {
             //logger.info("Broke non-primary container");
-            return false;
+            return true;
         }
 
         //logger.info("Broke container: " + container.getType());
@@ -182,7 +182,7 @@ public class LockedContainersManager {
 
         config.set("containers", this.containers);
         config.save(file);
-        return false;
+        return true;
     }
 
     public boolean handleContainerPlace(BlockPlaceEvent event) {
