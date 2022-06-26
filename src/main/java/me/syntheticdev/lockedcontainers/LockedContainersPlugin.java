@@ -22,6 +22,7 @@ public final class LockedContainersPlugin extends JavaPlugin {
 
         plugin = this;
         manager = new LockedContainersManager();
+        manager.load();
 
         this.registerEvents();
         LockedContainersRecipes.register();

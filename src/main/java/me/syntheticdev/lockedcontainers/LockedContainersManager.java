@@ -16,6 +16,7 @@ import org.bukkit.persistence.PersistentDataType;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -27,7 +28,7 @@ public class LockedContainersManager {
     private Material[] containerTypes = new Material[]{Material.CHEST, Material.BARREL};
 
     public LockedContainersManager() {
-        this.containers = this.load();
+        this.containers = new ArrayList<>();
     }
 
     public boolean isLockableContainer(Block block) {
@@ -95,16 +96,25 @@ public class LockedContainersManager {
         return lockedContainer;
     }
 
-    public ArrayList<LockedContainer> load() {
+    public void load() {
         File file = new File(LockedContainersPlugin.getPlugin().getDataFolder().getAbsolutePath(), "containers.yml");
         FileConfiguration config = YamlConfiguration.loadConfiguration(file);
         if (file.length() != 0L) {
-            List<?> containers = config.getList("containers");
-            if (containers instanceof ArrayList) {
-                return (ArrayList<LockedContainer>)containers;
+            List<?> list = config.getList("containers");
+            if (list instanceof ArrayList) {
+                ArrayList<LockedContainer> containers = (ArrayList<LockedContainer>)list;
+                boolean removed = containers.removeIf(lockedContainer -> lockedContainer == null || lockedContainer.getContainer() == null);
+                this.containers = containers;
+
+                if (!removed) return;
+                try {
+                    config.set("containers", this.containers);
+                    config.save(file);
+                } catch (IOException err) {
+                    err.printStackTrace();
+                }
             }
         }
-        return new ArrayList();
     }
 
     public ItemStack createLockedContainerItem(Material container) {
@@ -197,13 +207,20 @@ public class LockedContainersManager {
                 if (block.getType() != Material.CHEST) continue;
                 if (((org.bukkit.block.data.type.Chest)block.getBlockData()).getFacing() != containerFacing) continue;
 
-                boolean isDouble = ((Chest)block.getState()).getInventory() instanceof DoubleChestInventory;
+                Chest chest = (Chest)block.getState();
+                boolean isDouble = chest.getInventory() instanceof DoubleChestInventory;
                 //logger.info("Is double chest: " + isDouble);
                 if (isDouble) continue;
 
                 boolean isLockedChest = this.isLockedContainer(block);
 
                 if (isLockedContainer && isLockedChest) {
+                    LockedContainer lockedChest = this.getLockedContainer(chest);
+                    if (!lockedChest.isOwner(player)) {
+                        player.sendMessage(ChatColor.RED + "Cannot attach to another player's Locked Chest!");
+                        return true;
+                    }
+
                     lockedChestCount++;
                     if (lockedChestCount > 1) {
                         player.sendMessage(ChatColor.RED + "Locked Double Chest cannot be determined!");

@@ -1,6 +1,7 @@
 package me.syntheticdev.lockedcontainers;
 
 import org.bukkit.*;
+import org.bukkit.block.Block;
 import org.bukkit.block.Container;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.enchantments.Enchantment;
@@ -11,7 +12,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.util.ArrayList;
+import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +20,7 @@ import java.util.logging.Logger;
 
 public class LockedContainer implements ConfigurationSerializable {
     private OfflinePlayer owner;
-    private Container container;
+    private @Nullable Container container;
     private UUID uuid;
 
     public LockedContainer(Container container, OfflinePlayer owner, UUID uuid) {
@@ -28,14 +29,23 @@ public class LockedContainer implements ConfigurationSerializable {
         this.uuid = uuid;
     }
 
-    public OfflinePlayer getOwner() {
-        return this.owner;
+    public LockedContainer(Location location, OfflinePlayer owner, UUID uuid) {
+        Block block = location.getBlock();
+        if (LockedContainersPlugin.getManager().isLockableContainer(block)) {
+            this.container = (Container)block.getState();
+        }
+        this.owner = owner;
+        this.uuid = uuid;
     }
 
-    public UUID getUUID() {
-        return this.uuid;
-    }
+//    public OfflinePlayer getOwner() {
+//        return this.owner;
+//    }
+//    public UUID getUUID() {
+//        return this.uuid;
+//    }
 
+    @Nullable
     public Container getContainer() {
         return this.container;
     }
@@ -94,10 +104,10 @@ public class LockedContainer implements ConfigurationSerializable {
         String ownerUUID = (String)serializedMap.get("owner");
         OfflinePlayer owner = Bukkit.getOfflinePlayer(UUID.fromString(ownerUUID));
 
-        Container container = (Container)((Location)serializedMap.get("container")).getBlock().getState();
+        Location location = (Location)serializedMap.get("container");
         UUID uuid = UUID.fromString((String)serializedMap.get("uuid"));
 
-        LockedContainer deserialized = new LockedContainer(container, owner, uuid);
+        LockedContainer deserialized = new LockedContainer(location, owner, uuid);
         return deserialized;
     }
 }

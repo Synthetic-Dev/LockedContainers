@@ -24,6 +24,7 @@ import org.bukkit.util.Vector;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.logging.Logger;
 
 public class BlockListener implements Listener {
     private LockedContainersManager manager;
@@ -46,12 +47,17 @@ public class BlockListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         if (!manager.isLockedContainer(block)) return;
+        event.setCancelled(true);
+        Logger logger = LockedContainersPlugin.getPlugin().getLogger();
+        logger.info("is event cancelled: " + event.isCancelled());
 
         LockedContainer lockedContainer = manager.getLockedContainer((Container)block.getState());
+        logger.info("Broke: " + lockedContainer);
 
         try {
             boolean cancelled = manager.destroyLockedContainer(event, lockedContainer);
-            if (!cancelled) {
+            logger.info("Cancelled: " + cancelled);
+            if (lockedContainer == null || !cancelled) {
                 Container container = (Container)block.getState();
                 ItemStack[] contents;
                 if (block.getType().equals(Material.CHEST)) {
@@ -76,10 +82,8 @@ public class BlockListener implements Listener {
                     world.dropItemNaturally(location, item);
                 }
             }
-            event.setCancelled(true);
         } catch (IOException err) {
             err.printStackTrace();
-            event.setCancelled(true);
         }
     }
 
