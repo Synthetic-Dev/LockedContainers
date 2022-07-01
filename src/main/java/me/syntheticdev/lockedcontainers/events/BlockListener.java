@@ -10,7 +10,6 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.block.Container;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -18,9 +17,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
-import org.bukkit.inventory.DoubleChestInventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.Vector;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -49,17 +46,17 @@ public class BlockListener implements Listener {
         if (!manager.isLockedContainer(block)) return;
         event.setCancelled(true);
         Logger logger = LockedContainersPlugin.getPlugin().getLogger();
-        logger.info("is event cancelled: " + event.isCancelled());
+//        logger.info("is event cancelled: " + event.isCancelled());
 
         LockedContainer lockedContainer = manager.getLockedContainer((Container)block.getState());
-        logger.info("Broke: " + lockedContainer);
-        logger.info("Is null: " + (lockedContainer == null));
+//        logger.info("Broke: " + lockedContainer);
+//        logger.info("Is null: " + (lockedContainer == null));
 
         try {
             boolean shouldBreak = manager.destroyLockedContainer(event, lockedContainer);
-            logger.info("Should break: " + shouldBreak);
+//            logger.info("Should break: " + shouldBreak);
             if (lockedContainer == null || shouldBreak) {
-                logger.info("Breaking block");
+//                logger.info("Breaking block");
                 Container container = (Container)block.getState();
                 ItemStack[] contents;
                 if (block.getType().equals(Material.CHEST)) {
