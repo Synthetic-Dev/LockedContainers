@@ -5,6 +5,7 @@ import org.bukkit.block.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -17,6 +18,7 @@ import javax.annotation.Nullable;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -240,6 +242,27 @@ public class LockedContainersManager {
         return false;
     }
 
+    public boolean tryOpenContainer(LockedContainer lockedContainer, Player player) {
+        ItemStack item = player.getInventory().getItemInMainHand();
+        boolean hasKey = item.getType() == Material.TRIPWIRE_HOOK && this.isKey(item);
+
+        Container container = lockedContainer.getContainer();
+
+        if (hasKey && !lockedContainer.isValidKey(item)) {
+            player.sendMessage(ChatColor.RED + "That key is not for this " + Utils.toDisplayCase(container.getType().toString()) + ".");
+            player.playSound(container.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 1f);
+            return false;
+        }
+
+        if (!hasKey && !lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
+            player.sendMessage(ChatColor.RED + "This " + Utils.toDisplayCase(container.getType().toString()) + " is locked.");
+            player.playSound(container.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_CLOSE, 1f, 1f);
+            return false;
+        }
+
+        return true;
+    }
+
     public void handleContainerOpen(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         Container container = (Container)event.getClickedBlock().getState();
@@ -247,21 +270,8 @@ public class LockedContainersManager {
 
         if (lockedContainer == null) return;
 
-        ItemStack item = player.getInventory().getItemInMainHand();
-        boolean hasKey = item.getType() == Material.TRIPWIRE_HOOK && this.isKey(item);
-
-        if (hasKey && !lockedContainer.isValidKey(item)) {
-            player.sendMessage(ChatColor.RED + "That key is not for this " + Utils.toDisplayCase(container.getType().toString()) + ".");
-            player.playSound(container.getLocation(), Sound.BLOCK_ANVIL_LAND, 1f, 1f);
-            return;
-        }
-
-        if (!hasKey && !lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
-            player.sendMessage(ChatColor.RED + "This " + Utils.toDisplayCase(container.getType().toString()) + " is locked.");
-            player.playSound(container.getLocation(), Sound.BLOCK_IRON_TRAPDOOR_CLOSE, 1f, 1f);
-            return;
-        }
-
+        boolean shouldOpen = this.tryOpenContainer(lockedContainer, player);
+        if (!shouldOpen) return;
         player.openInventory(container.getInventory());
     }
 
@@ -273,6 +283,7 @@ public class LockedContainersManager {
         LockedContainer lockedContainer = this.getLockedContainer(container);
 
         if (lockedContainer == null) return;
+
         if (!lockedContainer.isOwner(player) && !player.hasPermission("lockedcontainers.admin")) {
             player.sendMessage(ChatColor.RED + "This is not your Locked " + Utils.toDisplayCase(container.getType().toString()) + ".");
             return;

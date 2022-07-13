@@ -8,6 +8,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
@@ -27,11 +28,14 @@ public class PlayerInteractListener implements Listener {
         Player player = event.getPlayer();
         if (player.isSneaking()) {
             ItemStack item = player.getInventory().getItemInMainHand();
-            if (item.getType().equals(Material.TRIPWIRE_HOOK) && !item.hasItemMeta()) {
+            if (item != null && item.getType().equals(Material.TRIPWIRE_HOOK) && !item.hasItemMeta()) {
                 manager.handleCreateKey(event, item);
                 event.setCancelled(true);
-                return;
+            } else if (item == null || item.getAmount() == 0 || item.getType().equals(Material.AIR)) {
+                // Handle special case where player has an empty hand and will open the container
+                event.setCancelled(true);
             }
+            return;
         }
 
         manager.handleContainerOpen(event);

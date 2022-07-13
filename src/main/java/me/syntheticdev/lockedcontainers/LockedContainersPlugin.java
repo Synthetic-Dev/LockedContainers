@@ -2,6 +2,7 @@ package me.syntheticdev.lockedcontainers;
 
 import me.syntheticdev.lockedcontainers.events.BlockListener;
 import me.syntheticdev.lockedcontainers.events.CraftingListener;
+import me.syntheticdev.lockedcontainers.events.InventoryListener;
 import me.syntheticdev.lockedcontainers.events.PlayerInteractListener;
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.serialization.ConfigurationSerializable;
@@ -42,5 +43,6 @@ public final class LockedContainersPlugin extends JavaPlugin {
         manager.registerEvents(new PlayerInteractListener(), this);
         manager.registerEvents(new BlockListener(), this);
         manager.registerEvents(new CraftingListener(), this);
+        manager.registerEvents(new InventoryListener(), this);
     }
 }

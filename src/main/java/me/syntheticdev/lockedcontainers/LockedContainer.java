@@ -47,7 +47,7 @@ public class LockedContainer implements ConfigurationSerializable {
 
     @Nullable
     public Container getContainer() {
-        return this.container;
+        return (Container)this.container.getLocation().getBlock().getState();
     }
 
     public void setContainer(Container container) {
